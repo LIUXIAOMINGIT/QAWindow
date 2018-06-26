@@ -5,8 +5,8 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import QUANTAXIS as QA
-from QAKLineChart import *
-from QAMACD import *
+from QUANTAXIS.QAWindow.QAKLineChart import *
+from QUANTAXIS.QAWindow.QAMACD import *
 
 class QAWindow(QMainWindow):
 
@@ -19,9 +19,27 @@ class QAWindow(QMainWindow):
         self.setGeometry(0, 0, 1024, 768)
         self.setWindowTitle(r"K线图")
         self.setStyleSheet("background:black")
+        self.loadStyleSheet()
         self.center()
         self.show()
         #self.showMaximized()
+
+    def loadStyleSheet(self):
+        file = QFile('qss/mainwindow.qss')
+        file.open(QFile.ReadOnly)
+        style = file.readAll()
+        sheet = str(style, encoding='utf8')
+        qApp.setStyleSheet(sheet)
+        file.close()
+
+    def resizeEvent(self, event):
+        indexList = self._stock_list_bar.selectionModel().selectedIndexes()
+        if len(indexList) <=0 :
+            pass
+        for index in indexList:
+            print(index.row())
+            self.table_item_selected(index)
+            return
 
     def get_stock_list(self):
         df = QA.df_get_stock_list()
@@ -40,28 +58,30 @@ class QAWindow(QMainWindow):
         self.setCentralWidget(self._gridwiget)
         self._grid.setRowStretch(0, 1)
         self._grid.setRowStretch(1, 20)
-        self._grid.setRowStretch(2, 5)
+        self._grid.setRowStretch(2, 8)
 
         self._grid.setColumnStretch(0, 1)
         self._grid.setColumnStretch(1, 8)
         self._grid.setColumnStretch(2, 1)
-        self._grid.setColumnMinimumWidth(0, 203)
-        self._grid.setColumnMinimumWidth(2, 203)
+        self._grid.setColumnMinimumWidth(0, 230)
+        self._grid.setColumnMinimumWidth(2, 200)
 
 
         #表格第一行设置为菜单按钮行
         labTest = QLabel("占位符")
-        labTest.setStyleSheet("background:gray")
+        labTest.setStyleSheet("background:rgb(50,50,50)")
         self._grid.addWidget(labTest, 0, 0, 1, 3)
 
         #添加tabwidget
         self._left_tabwidget = QTabWidget(self)
-        self._left_tabwidget.setStyleSheet("background:black")
+        self._left_tabwidget.setTabPosition(QTabWidget.West)
+        self._left_tabwidget.setTabShape(QTabWidget.Rounded)
+
         self._grid.addWidget(self._left_tabwidget, 1, 0, 2, 1)
 
         self._stock_list_bar = QTableView()
-        self.set_tableview_style(self._stock_list_bar)
-        self._stock_list_bar.setStyleSheet("background:black")
+        self._stock_list_bar.setObjectName("stocklisttable")
+
         column_names = ["代码","名称"]
         self.fill_table(self._stock_list_bar, "股票代码", column_names, self.stock_list)
 
@@ -74,18 +94,6 @@ class QAWindow(QMainWindow):
         self._macd_bar_chart = QWebEngineView()
         self._macd_bar_chart.page().setBackgroundColor(Qt.black)
         self._grid.addWidget(self._macd_bar_chart, 2, 1)
-
-    def set_tableview_style(self, view):
-        style = str("QScrollBar:vertical{width:10px;background:transparent;background-color:rgb(255, 255, 255);margin:0px,0px,0px,0px;padding-top:10px;padding-bottom:10px;}"
-                +"QScrollBar::handle:vertical{width:10px;background:black ;border-radius:5px;min-height:20px;}"
-                +"QScrollBar::handle:vertical:hover{width:10px;background:black;border-radius:5px;min-height:20px;}"
-                +"QScrollBar::add-line:vertical{height:10px;width:10px;border-image:url(:/button/images/button/down.png);subcontrol-position:bottom;}"
-                +"QScrollBar::sub-line:vertical{height:10px;width:10px;border-image:url(:/button/images/button/up.png);subcontrol-position:top;}"
-                +"QScrollBar::add-line:vertical:hover{height:10px;width:10px;border-image:url(:/button/images/button/down_mouseDown.png);subcontrol-position:bottom;}"
-                +"QScrollBar::sub-line:vertical:hover{height:10px;width:10px;border-image:url(:/button/images/button/up_mouseDown.png);subcontrol-position:top;}"
-                +"QScrollBar::add-page:vertical,QScrollBar::sub-page:vertical{background:transparent;border-radius:5px;}")
-        view.verticalScrollBar().setStyleSheet(style)
-
 
     def fill_table(self, table_view, table_view_name, column_names, data_list):
         """
@@ -101,14 +109,23 @@ class QAWindow(QMainWindow):
         if column_names is None or len(column_names) <= 0:
             return
         self._left_tabwidget.addTab(table_view, table_view_name)
+        currentBar = self._left_tabwidget.tabBar()
+        currentBar.setShape(QTabBar.RoundedEast)
         model = QStandardItemModel()
-        model.setColumnCount(len(column_names))
-
-        for i in range(len(column_names)):
-            model.setHeaderData(i, Qt.Horizontal, column_names[i])
+        model.setColumnCount(len(column_names)+1)
+        model.setHeaderData(0, Qt.Horizontal, "序号")
+        model.setHeaderData(1, Qt.Horizontal, column_names[0])
+        model.setHeaderData(2, Qt.Horizontal, column_names[1])
         table_view.setModel(model)
-        table_view.setColumnWidth(0, 60)
-        table_view.setColumnWidth(1, 80)
+
+        table_view.setColumnWidth(0, 40)
+        table_view.setColumnWidth(1, 60)
+        table_view.setColumnWidth(2, 80)
+        hv = QHeaderView(Qt.Vertical)
+        hv.hide()
+        table_view.setVerticalHeader(hv)
+        table_view.horizontalHeader().setStretchLastSection(True)#最后一列填充整个表头
+
         table_view.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table_view.setSelectionBehavior(QAbstractItemView.SelectRows)
         table_view.clicked.connect(self.table_item_selected)
@@ -116,10 +133,13 @@ class QAWindow(QMainWindow):
         if data_list is None or len(column_names) <= 0:
             return
         for j in range(len(data_list)):
-            model.setItem(j, 0, QStandardItem(data_list[j][0]))
-            model.setItem(j, 1, QStandardItem(data_list[j][1]))
-            model.item(j, 0).setForeground(QBrush(QColor(255, 255, 255)))
-            model.item(j, 1).setForeground(QBrush(QColor(255, 255, 255)))
+            model.setItem(j, 0, QStandardItem("{0}".format(j)))
+            model.setItem(j, 1, QStandardItem(data_list[j][0]))
+            model.setItem(j, 2, QStandardItem(data_list[j][1]))
+            model.item(j, 0).setForeground(QBrush(Qt.white))
+            model.item(j, 1).setForeground(QBrush(Qt.darkYellow))
+            model.item(j, 2).setForeground(QBrush(Qt.yellow))
+
 
 
     def table_item_selected(self, index):
@@ -166,6 +186,7 @@ class QAWindow(QMainWindow):
     def load_macd_chart(self, path):
         self._macd_bar_chart.load(QUrl.fromLocalFile(path))
         self._macd_bar_chart.show()
+        print(path)
 
     def generate_random_chart_name(self):
         return "kline_chart_{0}.html".format(random.randint(1, 10000))
