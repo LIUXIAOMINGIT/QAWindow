@@ -20,7 +20,8 @@ class QAWindow(QMainWindow):
         self.setWindowTitle(r"K线图")
         self.setStyleSheet("background:black")
         self.center()
-        self.showMaximized()
+        self.show()
+        #self.showMaximized()
 
     def get_stock_list(self):
         df = QA.df_get_stock_list()
@@ -55,23 +56,35 @@ class QAWindow(QMainWindow):
 
         #添加tabwidget
         self._left_tabwidget = QTabWidget(self)
-        self._left_tabwidget.setStyleSheet("background:white")
+        self._left_tabwidget.setStyleSheet("background:black")
         self._grid.addWidget(self._left_tabwidget, 1, 0, 2, 1)
 
         self._stock_list_bar = QTableView()
+        self.set_tableview_style(self._stock_list_bar)
+        self._stock_list_bar.setStyleSheet("background:black")
         column_names = ["代码","名称"]
         self.fill_table(self._stock_list_bar, "股票代码", column_names, self.stock_list)
 
         #添加kline_chart
         self._k_line_chart = QWebEngineView()
-        self._k_line_chart.setStyleSheet("background:black")
+        self._k_line_chart.page().setBackgroundColor(Qt.black)
         self._grid.addWidget(self._k_line_chart, 1, 1)
 
         #添加bar_chart
         self._macd_bar_chart = QWebEngineView()
-        self._macd_bar_chart.setStyleSheet("background:black")
+        self._macd_bar_chart.page().setBackgroundColor(Qt.black)
         self._grid.addWidget(self._macd_bar_chart, 2, 1)
 
+    def set_tableview_style(self, view):
+        style = str("QScrollBar:vertical{width:10px;background:transparent;background-color:rgb(255, 255, 255);margin:0px,0px,0px,0px;padding-top:10px;padding-bottom:10px;}"
+                +"QScrollBar::handle:vertical{width:10px;background:black ;border-radius:5px;min-height:20px;}"
+                +"QScrollBar::handle:vertical:hover{width:10px;background:black;border-radius:5px;min-height:20px;}"
+                +"QScrollBar::add-line:vertical{height:10px;width:10px;border-image:url(:/button/images/button/down.png);subcontrol-position:bottom;}"
+                +"QScrollBar::sub-line:vertical{height:10px;width:10px;border-image:url(:/button/images/button/up.png);subcontrol-position:top;}"
+                +"QScrollBar::add-line:vertical:hover{height:10px;width:10px;border-image:url(:/button/images/button/down_mouseDown.png);subcontrol-position:bottom;}"
+                +"QScrollBar::sub-line:vertical:hover{height:10px;width:10px;border-image:url(:/button/images/button/up_mouseDown.png);subcontrol-position:top;}"
+                +"QScrollBar::add-page:vertical,QScrollBar::sub-page:vertical{background:transparent;border-radius:5px;}")
+        view.verticalScrollBar().setStyleSheet(style)
 
 
     def fill_table(self, table_view, table_view_name, column_names, data_list):
@@ -90,6 +103,7 @@ class QAWindow(QMainWindow):
         self._left_tabwidget.addTab(table_view, table_view_name)
         model = QStandardItemModel()
         model.setColumnCount(len(column_names))
+
         for i in range(len(column_names)):
             model.setHeaderData(i, Qt.Horizontal, column_names[i])
         table_view.setModel(model)
@@ -104,6 +118,9 @@ class QAWindow(QMainWindow):
         for j in range(len(data_list)):
             model.setItem(j, 0, QStandardItem(data_list[j][0]))
             model.setItem(j, 1, QStandardItem(data_list[j][1]))
+            model.item(j, 0).setForeground(QBrush(QColor(255, 255, 255)))
+            model.item(j, 1).setForeground(QBrush(QColor(255, 255, 255)))
+
 
     def table_item_selected(self, index):
         row = index.row()
@@ -152,15 +169,6 @@ class QAWindow(QMainWindow):
 
     def generate_random_chart_name(self):
         return "kline_chart_{0}.html".format(random.randint(1, 10000))
-
-
-
-
-
-
-
-
-
 
 
 if __name__=="__main__":
