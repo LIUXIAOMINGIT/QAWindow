@@ -37,9 +37,25 @@ QTabWidget
     border-right : 0px; solid rgb(0, 0, 0);
 }
 
-
 QTabBar
 {
     background: black;
     border: 1px; solid rgb(0, 0, 0);
+}
+
+QTextEdit
+{
+    color:yellow;
+    readonly:true;
+    border:0px solid rgb(50, 50, 50);
+    border-top-color: rgba(0, 0, 0, 0);
+    border-right-color: rgba(0, 0, 0, 0);
+    border-bottom-color: rgba(0, 0, 0, 0);
+ }
+
+QLabel#news_title
+{
+     font-size:20px;
+
+     color:yellow;
 }

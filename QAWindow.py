@@ -12,6 +12,9 @@ class QAWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.timer = QTimer(self)
+        self.timer.setInterval(500)
+        self.timer.timeout.connect(self.roll)
         self.kline_chart = KlineChart()
         self.macd_chart = MACDChart()
         self.get_stock_list()
@@ -25,7 +28,12 @@ class QAWindow(QMainWindow):
         #self.showMaximized()
 
     def loadStyleSheet(self):
+        """
+        加载QSS全局样式文件
+        :return:
+        """
         file = QFile('qss/mainwindow.qss')
+        #file = QFile('qss/my.qss')
         file.open(QFile.ReadOnly)
         style = file.readAll()
         sheet = str(style, encoding='utf8')
@@ -33,6 +41,11 @@ class QAWindow(QMainWindow):
         file.close()
 
     def resizeEvent(self, event):
+        """
+        窗口大小改变时需要动态调整图形
+        :param event:
+        :return:
+        """
         indexList = self._stock_list_bar.selectionModel().selectedIndexes()
         if len(indexList) <=0 :
             pass
@@ -42,15 +55,28 @@ class QAWindow(QMainWindow):
             return
 
     def get_stock_list(self):
+        """
+        获取股票代码
+        :return:
+        """
         df = QA.df_get_stock_list()
         self.stock_list = df.values
 
-    def center(self):  # 主窗口居中显示函数
+    def center(self):
+        """
+        主窗口居中显示函数
+        :return:
+        """
         screen = QDesktopWidget().screenGeometry()
         size = self.geometry()
         self.move((screen.width() - size.width()) / 2, (screen.height() - size.height()) / 2)
 
     def init_layout(self):
+        """
+        界面布局
+        :return:
+        """
+        #定义GridLayout布局，主界面分成3行3列，第一行放按钮，第一列放表格，第二列放两张图形，最后一列放滚动文字
         self._grid = QGridLayout()
         self._grid.setSpacing(5)
         self._gridwiget = QWidget(self)
@@ -59,30 +85,27 @@ class QAWindow(QMainWindow):
         self._grid.setRowStretch(0, 1)
         self._grid.setRowStretch(1, 20)
         self._grid.setRowStretch(2, 8)
-
         self._grid.setColumnStretch(0, 1)
         self._grid.setColumnStretch(1, 8)
         self._grid.setColumnStretch(2, 1)
         self._grid.setColumnMinimumWidth(0, 230)
         self._grid.setColumnMinimumWidth(2, 200)
 
-
         #表格第一行设置为菜单按钮行
         labTest = QLabel("占位符")
         labTest.setStyleSheet("background:rgb(50,50,50)")
         self._grid.addWidget(labTest, 0, 0, 1, 3)
 
-        #添加tabwidget
+        #添加tabwidget,第一列为table,放在tab里，有多个table
         self._left_tabwidget = QTabWidget(self)
         self._left_tabwidget.setTabPosition(QTabWidget.West)
         self._left_tabwidget.setTabShape(QTabWidget.Rounded)
-
         self._grid.addWidget(self._left_tabwidget, 1, 0, 2, 1)
 
+        #股票代码列表，放进tab里
         self._stock_list_bar = QTableView()
         self._stock_list_bar.setObjectName("stocklisttable")
-
-        column_names = ["代码","名称"]
+        column_names = ["序号","代码","名称"]
         self.fill_table(self._stock_list_bar, "股票代码", column_names, self.stock_list)
 
         #添加kline_chart
@@ -94,6 +117,35 @@ class QAWindow(QMainWindow):
         self._macd_bar_chart = QWebEngineView()
         self._macd_bar_chart.page().setBackgroundColor(Qt.black)
         self._grid.addWidget(self._macd_bar_chart, 2, 1)
+
+        #添加滚动文字在最后一列中
+        self._news_message_grid = QGridLayout()
+        self._news_message_grid_wiget = QWidget(self)
+        self._news_message_grid_wiget.setLayout(self._news_message_grid)
+        self._news_message_grid_wiget.setStyleSheet("background: rgb(50,50,50)")
+        self._grid.addWidget(self._news_message_grid_wiget, 1, 2, 2, 1)
+
+        self._news_title = QLabel("最新资讯")
+        self._news_title.setObjectName("news_title")
+        self._news_title.setAlignment(Qt.AlignCenter)
+        self._news_message_grid.addWidget(self._news_title, 0,0)
+
+        self._news_message_text = QTextEdit()
+        self._news_message_text.setReadOnly(True)
+        self._news_message_grid.addWidget(self._news_message_text, 1,0)
+
+        self.set_news(self._news_message_text, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBB"
+                                               "BBCCCCCCCCCCCCCCCCCCCAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBCCCCCCCCCC"
+                                               "CCCCCCCCCAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBCCCCCCCCCCCCCCCCCCCAAA"
+                                               "AAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBCCCCCCCCCCCCCCCCCCCAAAAAAAAAAAAAAA"
+                                               "AAABBBBBBBBBBBBBBBBBBBBBBCCCCCCCCCCCCCCCCCCCAAAAAAAAAAAAAAAAAABBBBBBBBB"
+                                               "BBBBBBBBBBBBBCCCCCCCCCCCCCCCCCCCAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBB"
+                                               "BCCCCCCCCCCCCCCCCCCCAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBCCCCCCCCCCC"
+                                               "CCCCCCCCAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBCCCCCCCCCCCCCCCCCCCAABB"
+                                               "BBBBBBBBBBBBBBBBBBBBCCCCCCCCCCCCCCCCCCCBBBBBBBBBBBBBBBBBBBBCCCCCCCCCCCC"
+                                               "AAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBCCCCCCCCCCCCCCCCCCBBBBBBBBBBBBC")
+
+
 
     def fill_table(self, table_view, table_view_name, column_names, data_list):
         """
@@ -112,12 +164,10 @@ class QAWindow(QMainWindow):
         currentBar = self._left_tabwidget.tabBar()
         currentBar.setShape(QTabBar.RoundedEast)
         model = QStandardItemModel()
-        model.setColumnCount(len(column_names)+1)
-        model.setHeaderData(0, Qt.Horizontal, "序号")
-        model.setHeaderData(1, Qt.Horizontal, column_names[0])
-        model.setHeaderData(2, Qt.Horizontal, column_names[1])
+        model.setColumnCount(len(column_names))
+        for i in range(len(column_names)):
+            model.setHeaderData(i, Qt.Horizontal, column_names[i])
         table_view.setModel(model)
-
         table_view.setColumnWidth(0, 40)
         table_view.setColumnWidth(1, 60)
         table_view.setColumnWidth(2, 80)
@@ -125,7 +175,6 @@ class QAWindow(QMainWindow):
         hv.hide()
         table_view.setVerticalHeader(hv)
         table_view.horizontalHeader().setStretchLastSection(True)#最后一列填充整个表头
-
         table_view.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table_view.setSelectionBehavior(QAbstractItemView.SelectRows)
         table_view.clicked.connect(self.table_item_selected)
@@ -190,6 +239,18 @@ class QAWindow(QMainWindow):
 
     def generate_random_chart_name(self):
         return "kline_chart_{0}.html".format(random.randint(1, 10000))
+
+    def set_news(self, textEdit, message):
+        textEdit.setText(message)
+
+    def start_timer(self):
+        self.timer.start()
+
+    def stop_timer(self):
+        self.timer.stop()
+
+    def roll(self):
+        print("timer")
 
 
 if __name__=="__main__":
